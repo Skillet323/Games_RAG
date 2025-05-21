@@ -9,7 +9,9 @@ GAMES_RAG/
 │
 ├── scrapy_project/ # Data collection and processing
 │
-└── streamlit_app/ # Web interface
+├── streamlit_app/ # Web interface
+│
+└── rag_components/ # Parts of the rag itself
 
 ```
 
