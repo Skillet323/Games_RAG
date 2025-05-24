@@ -10,5 +10,6 @@ class CelestePageItem(scrapy.Item):
     section       = scrapy.Field()
     full_text     = scrapy.Field()
     image_urls    = scrapy.Field()
+    image_captions = scrapy.Field()
     cv_analysis   = scrapy.Field()
     chunks        = scrapy.Field()

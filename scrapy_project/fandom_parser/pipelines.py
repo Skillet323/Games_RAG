@@ -1,14 +1,9 @@
 # fandom_parser/pipelines.py
-import requests
-from io import BytesIO
-from PIL import Image
 from scrapy.utils.project import get_project_settings
-from .cv_runner import analyze_image
 from transformers import AutoTokenizer, logging as hf_logging
 import logging
 
 hf_logging.set_verbosity_error()
-
 class CVAnalysisPipeline:
     def __init__(self):
         settings = get_project_settings()
@@ -16,15 +11,22 @@ class CVAnalysisPipeline:
         self.tok = AutoTokenizer.from_pretrained('gpt2')
 
     def process_item(self, item, spider):
-        # CV-анализ изображений
+        # Используем подписи к изображениям из вики вместо CV-анализа пока что
+        image_urls = item.get('image_urls', [])
+        image_captions = item.get('image_captions', [])
+        
+        # Сопоставляем URL и подписи
         analyses = []
-        for url in item.get('image_urls', []):
-            analysis = analyze_image(url)
-            analyses.append(analysis)
+        for i, url in enumerate(image_urls):
+            caption = image_captions[i] if i < len(image_captions) else ""
+            analyses.append({
+                'caption': caption,
+                'objects': []  # Объекты не обнаруживаются
+            })
         
         item['cv_analysis'] = analyses
 
-        # Чанкование текста 
+        # Чанкование текста
         text = item.get('full_text', '')
         words = text.split()
         chunks = []

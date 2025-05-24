@@ -1,19 +1,18 @@
-#celeste_spider.py
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 from fandom_parser.items import CelestePageItem
 
 class CelesteSpider(CrawlSpider):
-    name = "celeste"
-    allowed_domains = ["celestegame.fandom.com"]
-    start_urls = ["https://celestegame.fandom.com/wiki/Celeste"]
+    name = "celeste_ink"
+    allowed_domains = ["celeste.ink"]  # Обновлено
+    start_urls = ["https://celeste.ink/wiki/Main_Page"]  # Основная страница
 
     rules = [
         Rule(
             LinkExtractor(
                 allow=r"/wiki/[^:]+$",
-                deny_domains=["static.wikia.nocookie.net"],
-                deny=r"\.(?:png|jpg|jpeg|gif|svg)$"
+                deny=[r"\.(?:png|jpg|jpeg|gif|svg)$", r"\?diff=", r"\?oldid="],
+                deny_domains=["static.wikitide.net"]  # Домен изображений
             ),
             callback="parse_page",
             follow=True
@@ -23,17 +22,33 @@ class CelesteSpider(CrawlSpider):
     def parse_page(self, response):
         item = CelestePageItem()
         item['doc_id'] = response.url.split('/')[-1]
-        # Заголовок: точный выбор всех текстовых узлов h1#firstHeading
-        title = ''.join(response.xpath('//h1[@id="firstHeading"]//text()').getall()).strip()
-        if not title:
-            # fallback на h1.page-header__title
-            title = response.css('h1.page-header__title::text').get(default='').strip()
+
+        # Заголовок
+        title = response.css('h1#firstHeading span.mw-page-title-main::text').get(default='').strip()
         item['title'] = title
+
         item['url'] = response.url
-        item['categories'] = response.css('.page-header__categories a::text').getall()
-        item['last_modified'] = response.css('li#footer-info-lastmod::text').get(default='').strip()
+        
+        # Категории (в MediaWiki они обычно внизу страницы)
+        item['categories'] = response.css('.catlinks ul li a::text').getall()
+        
+        # Дата последнего изменения
+        item['last_modified'] = response.css('#footer-info-lastmod::text').get(default='').strip()
+        
+        # Извлечение текста
         item['full_text'] = self.extract_full_text(response)
-        item['image_urls'] = response.css('div.mw-parser-output img::attr(src)').getall()
+
+        # Изображения и подписи
+        image_elements = response.css('div.mw-parser-output img')
+        item['image_urls'] = image_elements.css('::attr(src)').getall()
+        
+        # Подписи к изображениям (в MediaWiki — .thumbcaption, figcaption)
+        item['image_captions'] = [
+            caption.strip() for caption in 
+            response.css('div.mw-parser-output .thumbcaption::text, '
+                        'div.mw-parser-output figcaption::text').getall()
+        ]
+
         return item
 
     def extract_full_text(self, response):
@@ -41,7 +56,7 @@ class CelesteSpider(CrawlSpider):
         texts = []
         for b in blocks:
             tag = b.root.tag
-            if tag in ['h2','h3','h4']:
+            if tag in ['h2', 'h3', 'h4']:
                 sec = b.css('span.mw-headline::text').get()
                 if sec:
                     texts.append(f"## {sec}")
@@ -49,9 +64,9 @@ class CelesteSpider(CrawlSpider):
                 txt = ' '.join(b.css('::text').getall()).strip()
                 if txt:
                     texts.append(txt)
-            elif tag in ['ul','ol']:
+            elif tag in ['ul', 'ol']:
                 for li in b.css('li'):
                     li_txt = ' '.join(li.css('::text').getall()).strip()
                     if li_txt:
                         texts.append(f"- {li_txt}")
-        return ''.join(texts)
+        return '\n'.join(texts)
