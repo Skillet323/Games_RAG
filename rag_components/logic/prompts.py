@@ -6,6 +6,7 @@ GRADE_PROMPT = (
     "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
 )
 
+#Make the answer shorter
 REWRITE_PROMPT = (
     "Look at the input and try to reason about the underlying semantic intent / meaning.\n"
     "Here is the initial question:"

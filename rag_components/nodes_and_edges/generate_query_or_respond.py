@@ -1,4 +1,3 @@
-from rag_components.logic import retrieval
 from states.rag_states import GraphState
 from logic.llm import get_model
 from logic.retrieval import get_retriever_tool
