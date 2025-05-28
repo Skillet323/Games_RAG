@@ -49,10 +49,10 @@ class ArticleClassifier:
 
 def main():
     model_dir = "../models"
-    data_path = "../scrapy_project/output/combined.jl"
+    data_path = "../scrapy_project/output/combined_clean.jl"
     os.makedirs(model_dir, exist_ok=True)
 
-    knn_path = os.path.join(model_dir, "knn_model.pkl")
+    knn_path = os.path.join(model_dir, "knn_model_clean.pkl")
     titles_path = os.path.join(model_dir, "titles.json")
 
     clf = ArticleClassifier()
