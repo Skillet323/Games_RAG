@@ -48,7 +48,8 @@ class ArticleClassifier:
 
 
 def main():
-    model_dir = "model"
+    model_dir = "../models"
+    data_path = "../scrapy_project/output/combined.jl"
     os.makedirs(model_dir, exist_ok=True)
 
     knn_path = os.path.join(model_dir, "knn_model.pkl")
@@ -57,8 +58,8 @@ def main():
     clf = ArticleClassifier()
 
     if not os.path.exists(knn_path) or not os.path.exists(titles_path):
-        print("Training new model from data.jsonl...")
-        clf.load_data("celeste_pages2.jl")
+        print(f"Training new model from {data_path}...")
+        clf.load_data(data_path)
         clf.train()
         clf.save(knn_path, titles_path)
     else:
@@ -70,8 +71,10 @@ def main():
         query = input(">>> ").strip()
         if query.lower() == "exit":
             break
-        result = clf.predict(query)
-        print("Closest match:", result[0])
+        results = clf.predict(query, top_k=3)
+        print("Top matches:")
+        for i, title in enumerate(results, 1):
+            print(f"{i}. {title}")
 
 
 if __name__ == "__main__":
