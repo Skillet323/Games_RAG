@@ -1,51 +1,78 @@
 import json
-import joblib
 import os
-from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-import pandas as pd
+import pickle
 
-def convert_to_training_data(input_path, output_path):
-    with open(input_path, 'r', encoding='utf-8') as infile, \
-         open(output_path, 'w', encoding='utf-8') as outfile:
-        for line in infile:
-            data = json.loads(line)
-            title = data.get("title", "")
-            full_text = data.get("full_text", "").strip()
-            if not title or not full_text:
-                continue
-            # каждая строка — один пример: текст → метка
-            json.dump({"text": full_text, "label": title}, outfile)
-            outfile.write('\n')
-    print(f"Training data written to {output_path}")
+from sentence_transformers import SentenceTransformer
+from sklearn.neighbors import NearestNeighbors
 
-def train_model(data_path, model_path):
-    df = pd.read_json(data_path, lines=True)
-    X = df["text"]
-    y = df["label"]
 
-    pipe = Pipeline([
-        ("tfidf", TfidfVectorizer(max_features=3000, stop_words="english")),
-        ("clf", LogisticRegression(max_iter=1000))
-    ])
+class ArticleClassifier:
+    def __init__(self, model_name="all-MiniLM-L6-v2", k_neighbors=5):
+        self.model = SentenceTransformer(model_name)
+        self.knn = NearestNeighbors(n_neighbors=k_neighbors, metric="cosine")
+        self.embeddings = None
+        self.texts = []
+        self.titles = []
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    pipe.fit(X_train, y_train)
+    def load_data(self, jsonl_path):
+        with open(jsonl_path, "r", encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                text = entry.get("full_text", "").strip()
+                if len(text) > 30:
+                    self.texts.append(text)
+                    self.titles.append(entry.get("title", "Untitled"))
 
-    acc = pipe.score(X_test, y_test)
-    print(f"Accuracy on held-out set: {acc:.4f}")
+    def train(self):
+        print("Embedding and training on data...")
+        self.embeddings = self.model.encode(self.texts, convert_to_numpy=True)
+        self.knn.fit(self.embeddings)
+        print("Training complete.")
 
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    joblib.dump(pipe, model_path)
-    print(f"Model saved to {model_path}")
+    def save(self, knn_path, titles_path):
+        with open(knn_path, "wb") as f:
+            pickle.dump((self.knn, self.embeddings), f)
+        with open(titles_path, "w", encoding="utf-8") as f:
+            json.dump(self.titles, f, ensure_ascii=False)
 
-def predict_question(model_path, question):
-    model = joblib.load(model_path)
-    return model.predict([question])[0]
+    def load(self, knn_path, titles_path):
+        with open(knn_path, "rb") as f:
+            self.knn, self.embeddings = pickle.load(f)
+        with open(titles_path, "r", encoding="utf-8") as f:
+            self.titles = json.load(f)
+
+    def predict(self, query, top_k=1):
+        query_emb = self.model.encode([query], convert_to_numpy=True)
+        distances, indices = self.knn.kneighbors(query_emb, n_neighbors=top_k)
+        return [self.titles[i] for i in indices[0]]
+
+
+def main():
+    model_dir = "model"
+    os.makedirs(model_dir, exist_ok=True)
+
+    knn_path = os.path.join(model_dir, "knn_model.pkl")
+    titles_path = os.path.join(model_dir, "titles.json")
+
+    clf = ArticleClassifier()
+
+    if not os.path.exists(knn_path) or not os.path.exists(titles_path):
+        print("Training new model from data.jsonl...")
+        clf.load_data("celeste_pages2.jl")
+        clf.train()
+        clf.save(knn_path, titles_path)
+    else:
+        print("Loading existing model...")
+        clf.load(knn_path, titles_path)
+
+    print("\nAsk your questions (type 'exit' to quit):")
+    while True:
+        query = input(">>> ").strip()
+        if query.lower() == "exit":
+            break
+        result = clf.predict(query)
+        print("Closest match:", result[0])
+
 
 if __name__ == "__main__":
-    # convert_to_training_data("../scrapy_project/output/celeste_pages2.jl", "flat_train.jsonl")
-    # train_model("flat_train.jsonl", "models/text_topic_model.pkl")
-    print(predict_question("models/text_topic_model.pkl", "How can I do a corner jump?"))
+    main()
