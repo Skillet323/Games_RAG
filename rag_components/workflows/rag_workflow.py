@@ -1,3 +1,4 @@
+#rag_components/workflows/rag_workflow.py
 from langgraph.graph import START, END, StateGraph
 from states.rag_states import GraphState
 from langgraph.prebuilt import ToolNode
@@ -36,7 +37,7 @@ def create_rag_graph():
     # Edges taken after the `action` node is called.
     workflow.add_conditional_edges(
         "retrieve",
-        # Assess agent decision
+        # Access agent decision
         grade_documents,
     )
     workflow.add_edge("generate_answer", END)
