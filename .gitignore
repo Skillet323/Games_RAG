@@ -1,2 +1,36 @@
-*.env
-*.pt
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Env variables
+.env
+
+# Streamlit cache
+.streamlit/
+*.streamlit
+
+# Model/data files
+*.jl
+*.pkl
+*.joblib
+models/
+scrapy_project/output/
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
