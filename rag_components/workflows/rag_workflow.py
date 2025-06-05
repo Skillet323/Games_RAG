@@ -1,3 +1,11 @@
+from pathlib import Path
+
+# Добавляем корневую папку проекта в sys.path, чтобы можно было импортировать rag_components
+import sys
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+sys.path.append(str(PROJECT_ROOT))
+
+
 #rag_components/workflows/rag_workflow.py
 from langgraph.graph import START, END, StateGraph
 from states.rag_states import GraphState
@@ -9,6 +17,7 @@ from nodes_and_edges.generate_answer import generate_answer
 from nodes_and_edges.rewrite_question import rewrite_question
 from nodes_and_edges.grade_documents import grade_documents
 from logic.retrieval import get_retriever_tool
+
 
 
 def create_rag_graph():
